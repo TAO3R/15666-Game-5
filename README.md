@@ -2,7 +2,7 @@
 
 Author: Tao Jin
 
-Design: This is a coop sokoban (as suggested by its name) where players can only push boxes that has the same color to their character. The goal is to fill up all the target grid with corresponding color boxes or the player character.
+Design: This is a coop sokoban (as suggested by its name) where players can only push boxes that has the same color to their character. The goal is to fill up all the target grid with corresponding color boxes or the player character. I initially pictured this game to be competitive, but this makes the goal unclear and the input hard to sychronize (how to 'fairly' determine which player pushes a box first and show it to players in time), so I altered the design to be cooperative.
 
 Networking: The server runs all the game logic and the clients only send inputs and draw. Clients send `C2S_Controls` (button presses) every frame; the server sends `S2C_State` (game state, board, players) to every client each tick. Only two players can join. Messages are in `Game.cpp`, the server loop in `server.cpp`, the client in `PlayMode.cpp`.
 
