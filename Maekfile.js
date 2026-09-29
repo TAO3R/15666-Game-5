@@ -204,8 +204,11 @@ const server_exe = maek.LINK([...server_names, ...common_names], 'dist/server');
 const show_meshes_exe = maek.LINK([...show_meshes_names, ...common_names], 'scenes/show-meshes');
 const show_scene_exe = maek.LINK([...show_scene_names, ...common_names], 'scenes/show-scene');
 
+// push rule checks, run test-game after building
+const test_game_exe = maek.LINK([maek.CPP('test-game.cpp'), ...common_names], 'dist/test-game');
+
 //set the default target to the game (and copy the readme files):
-maek.TARGETS = [client_exe, server_exe, show_meshes_exe, show_scene_exe, ...copies];
+maek.TARGETS = [client_exe, server_exe, show_meshes_exe, show_scene_exe, test_game_exe, ...copies];
 
 //Note that tasks that produce ':abstract targets' are never cached.
 // This is similar to how .PHONY targets behave in make.

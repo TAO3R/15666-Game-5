@@ -74,7 +74,13 @@ struct Game {
 
 	// level
 	GameBoard board;
+	GameBoard initial_board;	// copy of the level as loaded, used by reset_level()
 	bool is_cleared() const;	// server side win check, see GameBoard goals
+	void reset_level();			// board back to initial_board, players back to their start cells
+
+	// one grid step for 'player'; blocked by edges, common obstacles, the other player and the other player's obstacles
+	// a chain of this player's own obstacles gets pushed along if the cell after the chain is free floor
+	void try_move(Player &player, int32_t dx, int32_t dy);
 
 	std::list< Player > players; //(using list so they can have stable addresses)
 	Player *spawn_player(); //add player the end of the players list (may also, e.g., play some spawn anim)

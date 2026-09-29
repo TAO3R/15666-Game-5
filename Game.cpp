@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <iostream>
 #include <cstring>
+#include <algorithm>
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/norm.hpp>
@@ -128,6 +129,64 @@ Game::Game()
 		assert(board.player_1_goal.size() <= board.player_1_obstacle.size() + 1 && "player 1 has more goals than things to cover them");
 		assert(board.player_2_goal.size() <= board.player_2_obstacle.size() + 1 && "player 2 has more goals than things to cover them");
 	}
+
+	initial_board = board;
+}
+
+void Game::reset_level()
+{
+	board = initial_board;
+	for (auto &p : players)
+	{
+		p.cell = p.number == 1 ? board.player_1_start : board.player_2_start;
+	}
+}
+
+void Game::try_move(Player &player, int32_t dx, int32_t dy)
+{
+	int32_t w = int32_t(board.width);
+	int32_t h = int32_t(board.height);
+
+	auto contains = [](std::vector< uint32_t > const &cells, uint32_t cell)
+	{
+		return std::find(cells.begin(), cells.end(), cell) != cells.end();
+	};
+	auto other_player_at = [&](uint32_t cell)
+	{
+		for (auto const &p : players)
+		{
+			if (&p != &player && p.cell == cell) { return true; }
+		}
+		return false;
+	};
+
+	std::vector< uint32_t > &own = player.number == 1 ? board.player_1_obstacle : board.player_2_obstacle;
+	std::vector< uint32_t > const &others = player.number == 1 ? board.player_2_obstacle : board.player_1_obstacle;
+
+	// walk forward from the player, collecting a chain of own obstacles until free floor shows up
+	std::vector< size_t > chain;	// indices into 'own'
+	int32_t x = int32_t(player.cell) % w + dx;
+	int32_t y = int32_t(player.cell) / w + dy;
+	while (true)
+	{
+		if (x < 0 || x >= w || y < 0 || y >= h) { return; }	// the chain (or the player) would leave the level
+		uint32_t cell = uint32_t(y * w + x);
+
+		// anything this player can't push blocks the whole move
+		if (contains(board.common_obstacle, cell) || contains(others, cell) || other_player_at(cell)) { return; }
+
+		auto it = std::find(own.begin(), own.end(), cell);
+		if (it == own.end()) { break; }	// free floor (goals included), chain ends here
+		chain.push_back(size_t(it - own.begin()));
+
+		x += dx;
+		y += dy;
+	}
+
+	// everything checked, shift the chain and the player one cell
+	int32_t step = dy * w + dx;
+	for (size_t i : chain) { own[i] = uint32_t(int32_t(own[i]) + step); }
+	player.cell = uint32_t(int32_t(player.cell) + step);
 }
 
 bool Game::is_cleared() const
@@ -186,13 +245,33 @@ void Game::remove_player(Player *player) {
 }
 
 void Game::update(float elapsed) {
-	{	// state machine
-		// back to waiting if someone leaves mid game
-		if (players.size() != MaxPlayers) { state = State::Waiting; }
-		else { state = is_cleared() ? State::Cleared : State::Playing; }
+	if (players.size() != MaxPlayers)
+	{	// back to waiting if someone leaves mid game, and start clean so a rejoining player never spawns on a pushed obstacle
+		reset_level();
+		state = State::Waiting;
 	}
+	else
+	{
+		bool reset = false;
+		for (auto const &p : players)
+		{
+			if (p.controls.jump.downs) { reset = true; }	// space restarts the level, also after clearing it
+		}
 
-	// movement is not implemented yet
+		if (reset) { reset_level(); }
+		else if (state != State::Cleared)	// moves are frozen once the level is cleared
+		{
+			for (auto &p : players)
+			{	// one step per tick, first pressed direction wins, the rest are dropped
+				if (p.controls.left.downs) { try_move(p, -1, 0); }
+				else if (p.controls.right.downs) { try_move(p, 1, 0); }
+				else if (p.controls.up.downs) { try_move(p, 0, 1); }
+				else if (p.controls.down.downs) { try_move(p, 0, -1); }
+			}
+		}
+
+		state = is_cleared() ? State::Cleared : State::Playing;
+	}
 
 	for (auto &p : players)
 	{	// reset 'downs' since controls have been handled
