@@ -153,7 +153,9 @@ const client_names = [
 	maek.CPP('client.cpp'),
 	maek.CPP('PlayMode.cpp'),
 	maek.CPP('LitColorTextureProgram.cpp'),
-	//maek.CPP('ColorTextureProgram.cpp'),  //not used right now, but you might want it
+	maek.CPP('BoxProgram.cpp'),
+	maek.CPP('ColorTextureProgram.cpp'),
+	maek.CPP('Text.cpp'),
 	maek.CPP('Sound.cpp'),
 	maek.CPP('load_wav.cpp'),
 	maek.CPP('load_opus.cpp')

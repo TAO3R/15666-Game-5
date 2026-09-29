@@ -2,6 +2,9 @@
 
 #include "Connection.hpp"
 #include "Game.hpp"
+#include "Scene.hpp"
+#include "Text.hpp"
+#include "data_path.hpp"
 
 #include <glm/glm.hpp>
 
@@ -30,5 +33,12 @@ struct PlayMode : Mode {
 
 	//connection to server:
 	Client &client;
+
+	// 3d scene, client side rendering only
+	Scene scene;
+	Scene::Camera *camera = nullptr;
+
+	// text
+	TextRenderer title{data_path("UESC_Display_Font.otf"), 48};
 
 };

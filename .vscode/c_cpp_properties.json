@@ -1,0 +1,27 @@
+{
+	"version": 4,
+	"configurations": [
+		{
+			"name": "Win32",
+			"includePath": [
+				"${workspaceFolder}",
+				"${workspaceFolder}/../nest-libs/windows/SDL3/include",
+				"${workspaceFolder}/../nest-libs/windows/glm/include",
+				"${workspaceFolder}/../nest-libs/windows/libpng/include",
+				"${workspaceFolder}/../nest-libs/windows/opusfile/include",
+				"${workspaceFolder}/../nest-libs/windows/libopus/include",
+				"${workspaceFolder}/../nest-libs/windows/libogg/include",
+				"${workspaceFolder}/../nest-libs/windows/harfbuzz/include",
+				"${workspaceFolder}/../nest-libs/windows/freetype/include"
+			],
+			"defines": [
+				"_USE_MATH_DEFINES",
+				"_WINDOWS",
+				"WIN32"
+			],
+			"cStandard": "c17",
+			"cppStandard": "c++20",
+			"intelliSenseMode": "windows-msvc-x64"
+		}
+	]
+}
