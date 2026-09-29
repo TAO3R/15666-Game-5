@@ -10,6 +10,7 @@
 
 #include <vector>
 #include <deque>
+#include <array>
 
 struct PlayMode : Mode {
 	PlayMode(Client &client);
@@ -36,7 +37,14 @@ struct PlayMode : Mode {
 
 	// 3d scene, client side rendering only
 	Scene scene;
-	Scene::Camera *camera = nullptr;
+	Scene::Transform camera_transform;	// lives outside the scene so rebuilding the board doesn't touch it
+	Scene::Camera camera{&camera_transform};
+
+	// board rendering
+	GameBoard built_board;	// the board the current scene was built from
+	void build_board_scene(GameBoard const &board);	// clears the scene and lays out floor, walls, obstacles
+	std::array< Scene::Transform *, 2 > player_transforms = { nullptr, nullptr };	// indexed by player number - 1
+	std::array< Scene::Drawable *, 2 > player_drawables = { nullptr, nullptr };		// hidden (count = 0) while that player is absent
 
 	// text
 	TextRenderer title{data_path("UESC_Display_Font.otf"), 96};

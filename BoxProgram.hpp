@@ -4,7 +4,7 @@
 #include "Load.hpp"
 #include "Scene.hpp"
 
-// box material: plain white albedo with a fixed light so the faces are distinguishable
+// box material: flat COLOR albedo with a fixed light so the faces are distinguishable
 struct BoxProgram {
 	BoxProgram();
 	~BoxProgram();
@@ -18,6 +18,7 @@ struct BoxProgram {
 	// uniform locations
 	GLuint CLIP_FROM_OBJECT_mat4 = -1U;
 	GLuint LIGHT_FROM_NORMAL_mat3 = -1U;
+	GLuint COLOR_vec3 = -1U;	// albedo, linear rgb; set per drawable through pipeline.set_uniforms
 };
 
 extern Load< BoxProgram > box_program;

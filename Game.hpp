@@ -4,7 +4,7 @@
 
 #include <string>
 #include <list>
-#include <random>
+#include <vector>
 
 struct Connection;
 
@@ -39,11 +39,24 @@ struct Player {
 	} controls;
 
 	//player state (sent from server):
-	glm::vec2 position = glm::vec2(0.0f, 0.0f);
-	glm::vec2 velocity = glm::vec2(0.0f, 0.0f);
+	uint8_t number = 0;	// 1 or 2, decides start cell, color and which obstacles this player can push
+	uint32_t cell = 0;	// grid index into the board, y * width + x
+};
 
-	glm::vec3 color = glm::vec3(1.0f, 1.0f, 1.0f);
-	std::string name = "";
+// level layout, only filled on the server; clients get it from the state message
+// all cells are grid indices y * width + x, (0, 0) is the lower-left corner
+struct GameBoard {
+	uint8_t width = 0;
+	uint8_t height = 0;
+
+	std::vector< uint32_t > common_obstacle;
+	std::vector< uint32_t > player_1_obstacle;	// seen by both players, only pushable by player 1
+	std::vector< uint32_t > player_2_obstacle;	// seen by both players, only pushable by player 2
+
+	uint32_t player_1_start = 0;
+	uint32_t player_2_start = 0;
+
+	bool operator==(GameBoard const &) const = default;	// client rebuilds the scene only when the board changes
 };
 
 struct Game {
@@ -54,12 +67,12 @@ struct Game {
 	} state = State::Waiting;
 	inline static constexpr uint32_t MaxPlayers = 2;	// coop game, needs exactly two players
 
+	// level
+	GameBoard board;
+
 	std::list< Player > players; //(using list so they can have stable addresses)
 	Player *spawn_player(); //add player the end of the players list (may also, e.g., play some spawn anim)
 	void remove_player(Player *); //remove player from game (may also, e.g., play some despawn anim)
-
-	std::mt19937 mt; //used for spawning players
-	uint32_t next_player_number = 1; //used for naming players
 
 	Game();
 
@@ -69,16 +82,6 @@ struct Game {
 	//constants:
 	//the update rate on the server:
 	inline static constexpr float Tick = 1.0f / 30.0f;
-
-	//arena size:
-	inline static constexpr glm::vec2 ArenaMin = glm::vec2(-0.75f, -1.0f);
-	inline static constexpr glm::vec2 ArenaMax = glm::vec2( 0.75f,  1.0f);
-
-	//player constants:
-	inline static constexpr float PlayerRadius = 0.06f;
-	inline static constexpr float PlayerSpeed = 2.0f;
-	inline static constexpr float PlayerAccelHalflife = 0.25f;
-	
 
 	//---- communication helpers ----
 

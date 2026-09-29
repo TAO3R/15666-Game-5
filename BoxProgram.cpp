@@ -35,12 +35,13 @@ BoxProgram::BoxProgram()
 	,
 		// fragment shader
 		"#version 330\n"
+		"uniform vec3 COLOR;\n"
 		"in vec3 normal;\n"
 		"out vec4 fragColor;\n"
 		"void main() {\n"
-		"	vec3 albedo = vec3(1.0);\n"
+		"	vec3 albedo = COLOR;\n"
 		"	vec3 l = normalize(vec3(0.3, -0.5, 1.0));\n"	// fixed light direction in world space
-		"	float e = 0.4 + 0.6 * max(0.0, dot(normalize(normal), l));\n"	// set e = 1.0 for flat white
+		"	float e = 0.4 + 0.6 * max(0.0, dot(normalize(normal), l));\n"	// set e = 1.0 for flat color
 		"	fragColor = vec4(e * albedo, 1.0);\n"
 		"}\n"
 	);
@@ -51,6 +52,7 @@ BoxProgram::BoxProgram()
 
 		CLIP_FROM_OBJECT_mat4 = glGetUniformLocation(program, "CLIP_FROM_OBJECT");
 		LIGHT_FROM_NORMAL_mat3 = glGetUniformLocation(program, "LIGHT_FROM_NORMAL");
+		COLOR_vec3 = glGetUniformLocation(program, "COLOR");
 	}
 }
 
