@@ -37,6 +37,11 @@ static glm::vec3 const FloorColorA = srgb(0xadd8e6);	// light blue
 static glm::vec3 const FloorColorB = srgb(0xd6ecf3);	// lighter blue
 static glm::vec3 const WallColor = srgb(0xffffff);	// perimeter and common obstacles
 static std::array< glm::vec3, 2 > const PlayerColors = { srgb(0xff0000), srgb(0x00c000) };	// player 1 red, player 2 green, also used by their obstacles
+static std::array< glm::vec3, 2 > const GoalColors = { srgb(0xf4a6a6), srgb(0xa6e3a6) };	// lighter tints, so an obstacle sitting on its goal still stands out
+
+// scales, z is the cube center; cube is 2m so center z == scale puts the bottom on the floor (z = 0)
+static constexpr float ObstacleScale = 0.8f;
+static constexpr float PlayerScale = 0.5f;
 
 // center of cell (x, y) in world space, grid starts at the origin
 static glm::vec3 cell_center(int32_t x, int32_t y, float z)
@@ -92,12 +97,23 @@ void PlayMode::build_board_scene(GameBoard const &board)
 	int32_t h = int32_t(board.height);
 	glm::vec3 const full = glm::vec3(1.0f);
 
-	{	// floor on z = -1, checkerboard so neighbors never share a color
+	{	// floor on z = -1, checkerboard so neighbors never share a color, goal cells take the player's tint
+		std::vector< glm::vec3 > floor_colors(size_t(w) * size_t(h));
 		for (int32_t y = 0; y < h; y++)
 		{
 			for (int32_t x = 0; x < w; x++)
 			{
-				add_cube("Floor", cell_center(x, y, -1.0f), full, (x + y) % 2 == 0 ? FloorColorA : FloorColorB);
+				floor_colors[y * w + x] = (x + y) % 2 == 0 ? FloorColorA : FloorColorB;
+			}
+		}
+		for (uint32_t g : board.player_1_goal) { floor_colors.at(g) = GoalColors[0]; }	// at(): board comes from the network
+		for (uint32_t g : board.player_2_goal) { floor_colors.at(g) = GoalColors[1]; }
+
+		for (int32_t y = 0; y < h; y++)
+		{
+			for (int32_t x = 0; x < w; x++)
+			{
+				add_cube("Floor", cell_center(x, y, -1.0f), full, floor_colors[y * w + x]);
 			}
 		}
 	}
@@ -113,12 +129,12 @@ void PlayMode::build_board_scene(GameBoard const &board)
 		}
 	}
 
-	{	// obstacles on z = 1, standing on the floor
+	{	// obstacles, standing on the floor
 		auto add_obstacles = [&](std::string const &name, std::vector< uint32_t > const &cells, glm::vec3 const &color)
 		{
 			for (uint32_t c : cells)
 			{
-				add_cube(name, cell_center(int32_t(c % board.width), int32_t(c / board.width), 1.0f), full, color);
+				add_cube(name, cell_center(int32_t(c % board.width), int32_t(c / board.width), ObstacleScale), glm::vec3(ObstacleScale), color);
 			}
 		};
 		add_obstacles("CommonObstacle", board.common_obstacle, WallColor);
@@ -126,11 +142,11 @@ void PlayMode::build_board_scene(GameBoard const &board)
 		add_obstacles("Player2Obstacle", board.player_2_obstacle, PlayerColors[1]);
 	}
 
-	{	// players, 0.8 scale so z = 0.8 puts their bottom on the floor
+	{	// players
 		// positions are synced every frame in update(), hidden until that player shows up
 		for (uint32_t i = 0; i < 2; i++)
 		{
-			Scene::Drawable &drawable = add_cube("Player" + std::to_string(i + 1), glm::vec3(0.0f), glm::vec3(0.8f), PlayerColors[i]);
+			Scene::Drawable &drawable = add_cube("Player" + std::to_string(i + 1), glm::vec3(0.0f), glm::vec3(PlayerScale), PlayerColors[i]);
 			drawable.pipeline.count = 0;
 			player_transforms[i] = drawable.transform;
 			player_drawables[i] = &drawable;
@@ -249,7 +265,7 @@ void PlayMode::update(float elapsed) {
 		{
 			if (p.number < 1 || p.number > 2) { continue; }
 			uint32_t i = p.number - 1;
-			player_transforms[i]->position = cell_center(int32_t(p.cell % built_board.width), int32_t(p.cell / built_board.width), 0.8f);
+			player_transforms[i]->position = cell_center(int32_t(p.cell % built_board.width), int32_t(p.cell / built_board.width), PlayerScale);
 			player_drawables[i]->pipeline.count = mesh_count;
 		}
 	}
@@ -269,11 +285,21 @@ void PlayMode::draw(glm::uvec2 const &drawable_size)
 			draw_waiting(drawable_size);
 			break;
 		case Game::State::Playing:
+		case Game::State::Cleared:
 			{	// 3d scene
 				camera.aspect = float(drawable_size.x) / float(drawable_size.y);
 				glEnable(GL_DEPTH_TEST);
 				glDepthFunc(GL_LESS);
 				scene.draw(camera);
+			}
+
+			if (game.state == Game::State::Cleared)
+			{	// win overlay, dark text so it reads on the light floor
+				glDisable(GL_DEPTH_TEST);
+				std::string const text = "Level  Clear";
+				float x = 0.5f * (float(drawable_size.x) - title.measure(text));
+				float y = 0.5f * float(drawable_size.y) - 0.5f * (title.ascender() - title.descender());	// roughly center the caps on the screen
+				title.draw(text, drawable_size, glm::vec2(x, y), glm::u8vec4(0x00, 0x00, 0x00, 0xff));	// vertex color is linear, anything above 0 gets brightened by the sRGB framebuffer
 			}
 			break;
 	}

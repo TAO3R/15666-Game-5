@@ -88,6 +88,10 @@ Game::Game()
 
 		board.player_1_start = 10;	// (1, 1)
 		board.player_2_start = 34;	// (7, 3)
+
+		// goals sit on the other side of the middle wall, so both players have to get through the gap
+		board.player_1_goal = { 33, 16 };	// (6, 3), (7, 1)
+		board.player_2_goal = { 28, 11 };	// (1, 3), (2, 1)
 	}
 
 	{	// sanity check: everything on the board, nothing stacked
@@ -105,7 +109,51 @@ Game::Game()
 		for (uint32_t c : board.player_2_obstacle) { place(c); }
 		place(board.player_1_start);
 		place(board.player_2_start);
+
+		// goals are floor, things can stand on them, so they get their own check
+		std::vector< bool > goal(cell_count, false);
+		auto place_goal = [&](uint32_t cell)
+		{
+			assert(cell < cell_count && "goal cell out of range");
+			assert(!goal[cell] && "two goals on the same board cell");
+			goal[cell] = true;
+		};
+		for (uint32_t c : board.player_1_goal) { place_goal(c); }
+		for (uint32_t c : board.player_2_goal) { place_goal(c); }
+
+		// common obstacles can't be pushed (for now), a goal under one could never be reached
+		for (uint32_t c : board.common_obstacle) { assert(!goal[c] && "goal under a common obstacle"); }
+
+		// each goal needs one of that player's obstacles or the player itself
+		assert(board.player_1_goal.size() <= board.player_1_obstacle.size() + 1 && "player 1 has more goals than things to cover them");
+		assert(board.player_2_goal.size() <= board.player_2_obstacle.size() + 1 && "player 2 has more goals than things to cover them");
 	}
+}
+
+bool Game::is_cleared() const
+{
+	auto covered = [&](uint32_t goal, std::vector< uint32_t > const &obstacles, uint8_t number)
+	{
+		for (uint32_t c : obstacles)
+		{
+			if (c == goal) { return true; }
+		}
+		for (auto const &p : players)
+		{
+			if (p.number == number && p.cell == goal) { return true; }
+		}
+		return false;
+	};
+
+	for (uint32_t g : board.player_1_goal)
+	{
+		if (!covered(g, board.player_1_obstacle, 1)) { return false; }
+	}
+	for (uint32_t g : board.player_2_goal)
+	{
+		if (!covered(g, board.player_2_obstacle, 2)) { return false; }
+	}
+	return true;
 }
 
 Player *Game::spawn_player()
@@ -140,7 +188,8 @@ void Game::remove_player(Player *player) {
 void Game::update(float elapsed) {
 	{	// state machine
 		// back to waiting if someone leaves mid game
-		state = players.size() == MaxPlayers ? State::Playing : State::Waiting;
+		if (players.size() != MaxPlayers) { state = State::Waiting; }
+		else { state = is_cleared() ? State::Cleared : State::Playing; }
 	}
 
 	// movement is not implemented yet
@@ -185,6 +234,8 @@ void Game::send_state_message(Connection *connection_, Player *connection_player
 		send_cells(board.player_2_obstacle);
 		connection.send(board.player_1_start);
 		connection.send(board.player_2_start);
+		send_cells(board.player_1_goal);
+		send_cells(board.player_2_goal);
 	}
 
 	//send player info helper:
@@ -234,7 +285,7 @@ bool Game::recv_state_message(Connection *connection_) {
 	{	// game state
 		uint8_t s;
 		read(&s);
-		if (s > uint8_t(State::Playing)) { throw std::runtime_error("Unknown game state " + std::to_string(int(s)) + "."); }
+		if (s > uint8_t(State::Cleared)) { throw std::runtime_error("Unknown game state " + std::to_string(int(s)) + "."); }
 		state = State(s);
 	}
 
@@ -256,6 +307,8 @@ bool Game::recv_state_message(Connection *connection_) {
 		read_cells(&board.player_2_obstacle);
 		read(&board.player_1_start);
 		read(&board.player_2_start);
+		read_cells(&board.player_1_goal);
+		read_cells(&board.player_2_goal);
 	}
 
 	players.clear();

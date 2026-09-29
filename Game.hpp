@@ -56,6 +56,10 @@ struct GameBoard {
 	uint32_t player_1_start = 0;
 	uint32_t player_2_start = 0;
 
+	// goals are floor cells; level clears when every goal has that player's obstacle or that player on it
+	std::vector< uint32_t > player_1_goal;
+	std::vector< uint32_t > player_2_goal;
+
 	bool operator==(GameBoard const &) const = default;	// client rebuilds the scene only when the board changes
 };
 
@@ -63,12 +67,14 @@ struct Game {
 	// game state machine, decided on the server and sent to clients
 	enum class State : uint8_t {
 		Waiting = 0,	// waiting for MaxPlayers to join, scene is not drawn
-		Playing = 1
+		Playing = 1,
+		Cleared = 2		// every goal is covered, scene is drawn with a "Level Clear" overlay
 	} state = State::Waiting;
 	inline static constexpr uint32_t MaxPlayers = 2;	// coop game, needs exactly two players
 
 	// level
 	GameBoard board;
+	bool is_cleared() const;	// server side win check, see GameBoard goals
 
 	std::list< Player > players; //(using list so they can have stable addresses)
 	Player *spawn_player(); //add player the end of the players list (may also, e.g., play some spawn anim)
