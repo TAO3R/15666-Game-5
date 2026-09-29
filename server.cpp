@@ -71,6 +71,15 @@ int main(int argc, char **argv) {
 				if (evt == Connection::OnOpen) {
 					//client connected:
 
+					// game is full, reject the join request
+					// closed sockets get reaped by poll without an OnClose, so no player cleanup needed
+					if (connection_to_player.size() >= Game::MaxPlayers)
+					{
+						std::cout << "Game is full, rejecting connection." << std::endl;
+						c->close();
+						return;
+					}
+
 					//create some player info for them:
 					connection_to_player.emplace(c, game.spawn_player());
 

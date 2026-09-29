@@ -40,14 +40,14 @@ PlayMode::PlayMode(Client &client_) : client(client_)
 		drawable.pipeline.count = mesh.count;
 	}
 
-	{	// camera 5m straight above the origin, looking down
+	{	// camera 15m straight above the origin, looking down
 		scene.transforms.emplace_back();
 		Scene::Transform *camera_transform = &scene.transforms.back();
 		camera_transform->name = "Camera";
 
 		float pitch = glm::radians(0.0f);	// camera looks along its local -z already, so 0 is straight down; only tilt around x
 		camera_transform->rotation = glm::angleAxis(pitch, glm::vec3(1.0f, 0.0f, 0.0f));
-		camera_transform->position = glm::vec3(0.0f, 0.0f, 5.0f);
+		camera_transform->position = glm::vec3(0.0f, 0.0f, 15.0f);
 
 		scene.cameras.emplace_back(camera_transform);
 		camera = &scene.cameras.back();
@@ -149,17 +149,43 @@ void PlayMode::draw(glm::uvec2 const &drawable_size)
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	}
 
-	{	// 3d scene
-		camera->aspect = float(drawable_size.x) / float(drawable_size.y);
-		glEnable(GL_DEPTH_TEST);
-		glDepthFunc(GL_LESS);
-		scene.draw(*camera);
-	}
-
-	{	// text overlay
-		glDisable(GL_DEPTH_TEST);
-		title.draw("SOKOBAN", drawable_size, glm::vec2(20.0f, 20.0f + title.descender()), glm::u8vec4(0xff, 0xff, 0xff, 0xff));
+	switch (game.state)
+	{
+		case Game::State::Waiting:
+			draw_waiting(drawable_size);
+			break;
+		case Game::State::Playing:
+			{	// 3d scene
+				camera->aspect = float(drawable_size.x) / float(drawable_size.y);
+				glEnable(GL_DEPTH_TEST);
+				glDepthFunc(GL_LESS);
+				scene.draw(*camera);
+			}
+			break;
 	}
 
 	GL_ERRORS();
+}
+
+void PlayMode::draw_waiting(glm::uvec2 const &drawable_size)
+{
+	glDisable(GL_DEPTH_TEST);
+
+	glm::u8vec4 const white = glm::u8vec4(0xff, 0xff, 0xff, 0xff);
+	constexpr float line_gap = 0.5f;	// space between title and subtitle, in title line heights
+
+	// horizontally center one line on its measured width
+	auto centered = [&drawable_size](TextRenderer &font, std::string const &text, float baseline_y, glm::u8vec4 const &color)
+	{
+		float x = 0.5f * (float(drawable_size.x) - font.measure(text));
+		font.draw(text, drawable_size, glm::vec2(x, baseline_y), color);
+	};
+
+	// title baseline on the vertical center, subtitle hangs below it
+	float y = 0.5f * float(drawable_size.y);
+	centered(title, "SoCoopBan", y, white);
+
+	y -= title.descender() + line_gap * title.line_height() + subtitle.ascender();
+	// the only way to be waiting is being the first of two players, so this is always 1/2
+	centered(subtitle, "Waiting for player 1/2", y, white);
 }

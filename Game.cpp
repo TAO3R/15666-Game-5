@@ -111,6 +111,12 @@ void Game::remove_player(Player *player) {
 }
 
 void Game::update(float elapsed) {
+	{	// state machine
+		// back to waiting if someone leaves mid game
+		state = players.size() == MaxPlayers ? State::Playing : State::Waiting;
+		if (state == State::Waiting) { return; }
+	}
+
 	//position/velocity update:
 	for (auto &p : players) {
 		glm::vec2 dir = glm::vec2(0.0f, 0.0f);
@@ -214,6 +220,9 @@ void Game::send_state_message(Connection *connection_, Player *connection_player
 		connection.send_buffer.insert(connection.send_buffer.end(), player.name.begin(), player.name.begin() + len);
 	};
 
+	// game state
+	connection.send(uint8_t(state));
+
 	//player count:
 	connection.send(uint8_t(players.size()));
 	if (connection_player) send_player(*connection_player);
@@ -251,6 +260,13 @@ bool Game::recv_state_message(Connection *connection_) {
 		std::memcpy(val, &recv_buffer[4 + at], sizeof(*val));
 		at += sizeof(*val);
 	};
+
+	{	// game state
+		uint8_t s;
+		read(&s);
+		if (s > uint8_t(State::Playing)) { throw std::runtime_error("Unknown game state " + std::to_string(int(s)) + "."); }
+		state = State(s);
+	}
 
 	players.clear();
 	uint8_t player_count;

@@ -39,6 +39,8 @@ struct PlayMode : Mode {
 	Scene::Camera *camera = nullptr;
 
 	// text
-	TextRenderer title{data_path("UESC_Display_Font.otf"), 48};
+	TextRenderer title{data_path("UESC_Display_Font.otf"), 96};
+	TextRenderer subtitle{data_path("UESC_Display_Font.otf"), 32};
+	void draw_waiting(glm::uvec2 const &drawable_size);	// title screen while waiting for the other player
 
 };

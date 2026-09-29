@@ -47,6 +47,13 @@ struct Player {
 };
 
 struct Game {
+	// game state machine, decided on the server and sent to clients
+	enum class State : uint8_t {
+		Waiting = 0,	// waiting for MaxPlayers to join, scene is not drawn
+		Playing = 1
+	} state = State::Waiting;
+	inline static constexpr uint32_t MaxPlayers = 2;	// coop game, needs exactly two players
+
 	std::list< Player > players; //(using list so they can have stable addresses)
 	Player *spawn_player(); //add player the end of the players list (may also, e.g., play some spawn anim)
 	void remove_player(Player *); //remove player from game (may also, e.g., play some despawn anim)
