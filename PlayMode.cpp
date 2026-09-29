@@ -301,5 +301,5 @@ void PlayMode::draw_waiting(glm::uvec2 const &drawable_size)
 
 	y -= title.descender() + line_gap * title.line_height() + subtitle.ascender();
 	// the only way to be waiting is being the first of two players, so this is always 1/2
-	centered(subtitle, "Waiting for player 1/2", y, white);
+	centered(subtitle, "Waiting  for  player  1/2", y, white);
 }
